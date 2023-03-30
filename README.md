@@ -2,6 +2,7 @@
 CMSC701_HW2
 
 Project done at 3:59AM 3/30/2023
+Will deduct 4% of grade
 
 In the command line write
 
