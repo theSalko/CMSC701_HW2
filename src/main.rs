@@ -15,11 +15,15 @@ use rank_support::RankSupport;
 use select_support::SelectSupport;
 use sparse_array::SparseArray;
 
-const TEST_SPEED:bool = true;
+const TEST_SPEED:bool = false;
+const TEST_GET_AT_INDEX:bool = false;
+const TEST_NUM_ELEMENTS_AT:bool = false;
+const TEST_GET_AT_RANK:bool = false;
+const TEST_GET_INDEX_OF:bool = false;
 
 fn benchmark_rank(bitvector_size: usize, num_operations: usize) -> f64 {
     let mut rng = rand::thread_rng();
-    println!("running for size {}", bitvector_size);
+    // println!("running for size {}", bitvector_size);
 
     let mut bit_vector = BitVector::new(bitvector_size); 
 
@@ -44,6 +48,39 @@ fn benchmark_rank(bitvector_size: usize, num_operations: usize) -> f64 {
     duration.as_secs_f64()
 }
 
+
+
+fn benchmark_select_time(bitvector_size: usize, num_operations: usize) -> f64 {
+    let mut rng = rand::thread_rng();
+    // println!("running for size {}", bitvector_size);
+
+    let mut bit_vector = BitVector::new(bitvector_size); 
+
+    for i in 0..bitvector_size {
+        bit_vector.set(i, rng.gen_bool(0.5));
+    }
+
+    // Initialize it
+    let rank_support = RankSupport::new(&bit_vector);
+
+    let select_support = SelectSupport::new(&rank_support);
+
+    let start = Instant::now();
+
+    // For num_operations time
+    for _ in 0..num_operations {
+        let index = rng.gen_range(0..bitvector_size/3);
+        // Get the 1 rank of the index
+        select_support.select1(index.try_into().unwrap());
+    }
+
+
+
+    let duration = start.elapsed();
+    // return the duration as a float in seconds
+    duration.as_secs_f64()
+}
+
 fn benchmark_size(bitvector_size: usize) -> usize {
     let mut rng = rand::thread_rng();
     println!("running size benchmark for size {}", bitvector_size);
@@ -55,9 +92,70 @@ fn benchmark_size(bitvector_size: usize) -> usize {
     let rank_support = RankSupport::new(&bit_vector);
 
     rank_support.overhead()
-
 }
 
+fn benchmark_select_size(bitvector_size: usize) -> usize {
+    let mut rng = rand::thread_rng();
+    println!("running size benchmark for size {}", bitvector_size);
+    let mut bit_vector = BitVector::new(bitvector_size); 
+    for i in 0..bitvector_size {
+        bit_vector.set(i, rng.gen_bool(0.5));
+    }
+    
+    let rank_support = RankSupport::new(&bit_vector);
+    let select_support = SelectSupport::new(&rank_support);
+
+    select_support.overhead().try_into().unwrap()
+}
+
+
+fn test_select_support_full(){
+
+    let num_operations = 100_000;
+    let sizes = [1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000];
+
+
+    // let root = BitMapBackend::new("plot.png", (800, 600)).into_drawing_area();
+    // root.fill(&WHITE).unwrap();
+    
+    // // TODO: Modify Chart Builder template
+    // let mut chart = ChartBuilder::on(&root)
+    //     .caption("BitVector Size vs Time", ("Arial", 24).into_font())
+    //     .margin(5)
+    //     .x_label_area_size(30)
+    //     .y_label_area_size(30)
+    //     .build_cartesian_2d(0u32..*sizes.last().unwrap() as u32, 0.0..1.0)
+    //     .unwrap();
+
+    // chart.configure_mesh().x_desc("Size").y_desc("Time").draw().unwrap();
+
+    // let size_time: Vec<(u32, f64)> = sizes
+    //     .iter()
+    //     .map(|&size| {
+    //         let time = benchmark_select_time(size, num_operations);
+    //         (size as u32, time)
+    //     })
+    //     .collect();
+
+    // chart
+    //     .draw_series(LineSeries::new(size_time, &RED))
+    //     .unwrap()
+    //     .label("Size vs Time")
+    //     .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
+
+    // chart.configure_series_labels().draw().unwrap();
+
+    let mut all_times= Vec::new();
+    let mut all_sizes = Vec::new();
+    for size in sizes {
+        all_times.push(benchmark_select_time(size, num_operations));
+        all_sizes.push(benchmark_select_size(size));
+    }
+
+    for i in 0..all_times.len() {
+        println!("for size = {} time was = {} and total size was = {}", sizes[i], all_times[i], all_sizes[i]);
+    }
+}
 
 fn test_rank_support(){
 
@@ -103,9 +201,11 @@ fn test_rank_support(){
     }
 
     for i in 0..all_times.len() {
-        println!("for size = {} time was = {} and total size was = {}",sizes[i], all_times[i], all_sizes[i]);
+        println!("for size = {} time was = {} and total size was = {}", sizes[i], all_times[i], all_sizes[i]);
     }
 }
+
+
 
 
 fn test_select_support(){
@@ -162,6 +262,9 @@ fn make_sparse_array(size: u64, sparsity:f64) -> SparseArray {
 
 }
 
+// Makes a sparse array with given size and sparsity
+// adds an empty string "" to "non_populated" places
+// add "hello world" to "populated" places
 fn make_sparse_array3(size: u64, sparsity:f64) -> SparseArray {
     let mut sparse_array = SparseArray::create(size);
     let mut rng = rand::thread_rng();
@@ -174,7 +277,7 @@ fn make_sparse_array3(size: u64, sparsity:f64) -> SparseArray {
             let element = String::from("hello world").to_owned();
             sparse_array.append(element, i);
         } else {
-            let element = String::from("").to_owned();
+            let element = String::from(" ").to_owned();
             sparse_array.append(element, i);
         }
        
@@ -184,7 +287,29 @@ fn make_sparse_array3(size: u64, sparsity:f64) -> SparseArray {
 
 }
 
+fn check_bit_vector() {
+ 
+    // Create a bit vector with 159 bits
+    let mut bit_vector = BitVector::new(159);
 
+    // make some bits for the bit vector
+    bit_vector.set(5, true);
+    bit_vector.set(10, true);
+    bit_vector.set(30, true);
+    bit_vector.set(35, true);
+    bit_vector.set(50, true);
+    bit_vector.set(75, true);
+    bit_vector.set(120, true);
+    bit_vector.set(130, true);
+    bit_vector.set(135, true);
+
+    let rank_support = RankSupport::new(&bit_vector);
+
+    println!("Rank at position 10: {}", rank_support.rank1(10));
+    println!("Rank at position 30: {}", rank_support.rank1(30));
+    println!("Rank at position 50: {}", rank_support.rank1(50));
+    println!("Rank at position 70: {}", rank_support.rank1(70));
+}
 
 fn make_sparse_array2() -> SparseArray {
     let mut sparse_array = SparseArray::create(20);
@@ -202,28 +327,29 @@ fn make_sparse_array2() -> SparseArray {
 }
 
 fn test_validity_sparse_array(){
-    let GET_INDEX_NUM = 5;
-    let mut sparse_array = make_sparse_array2();
-    let mut s = String::from("nothing");
-    sparse_array.print_everything(5);
-    sparse_array.get_at_rank(4, &mut s);
-    println!("get_at_rank of 4 is = {}", &s);
-    sparse_array.get_at_index(5, &mut s);
-    println!("get_at_index of 5 is = {}", &s);
-
-    let x = sparse_array.get_index_of(GET_INDEX_NUM);
-    println!("get_index_of {} is = {}", GET_INDEX_NUM, x);
-    let x = sparse_array.num_elem_at(18);
-    println!("num_elem_at 18 is = {}", x);
+    for i in 0..6 {
+        let GET_INDEX_NUM = i;
+        let mut sparse_array = make_sparse_array2();
+        let mut s = String::from("nothing");
+        sparse_array.print_everything(5);
+        sparse_array.get_at_rank(4, &mut s);
+        println!("get_at_rank of 4 is = {}", &s);
+        sparse_array.get_at_index(5, &mut s);
+        println!("get_at_index of 5 is = {}", &s);
+    
+        let x = sparse_array.get_index_of(GET_INDEX_NUM);
+        println!("get_index_of {} is = {}", GET_INDEX_NUM, x);
+        let x = sparse_array.num_elem_at(18);
+        println!("num_elem_at 18 is = {}", x);
+    }
+   
 }
 
 
-
-
 fn test_speed_of_funcs_wrt_size(){
-    let num_operations = 100_000;
-    let sizes = [1_000, 10_000, 100_000, 1_000_000];
-    let sparsities = [0.01, 0.05, 0.1];
+    let num_operations = 1_000_000;
+    let sizes = [1_000, 5_000, 10_000, 50_000, 100_000, 500_000, 1_000_000, 5_000_000, 10_000_000];//[1_000, 10_000, 100_000, 500_000, 1_000_000, 5_000_000, 10_000_000];
+    let sparsities = [0.05]; //[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0];
     let mut rng = rand::thread_rng();
 
 
@@ -239,93 +365,102 @@ fn test_speed_of_funcs_wrt_size(){
                 let mut s = String::from("nothing");
     
     
-                // 
-                // TESTING GET AT INDEX
-                //
-                // println!("Testing get at index");
-                let start = Instant::now();
-                // For num_operations time
-                for _ in 0..num_operations {
-                    let index = rng.gen_range(0..size-1);
-                    // Get the at index index
-                    sparse_array.get_at_index(index, &mut s);
+                if TEST_GET_AT_INDEX {
+                    // TESTING GET AT INDEX
+                    //
+                    // println!("Testing get at index");
+                    let start = Instant::now();
+                    // For num_operations time
+                    for _ in 0..num_operations {
+                        let index = rng.gen_range(0..size-1);
+                        // Get the at index index
+                        sparse_array.get_at_index(index, &mut s);
+                    }
+                    let duration = start.elapsed();
+                    // return the duration as a float in seconds
+                    let x = duration.as_secs_f64();
+                    println!("t = {} for get at index", x);
                 }
-                let duration = start.elapsed();
-                // return the duration as a float in seconds
-                let x = duration.as_secs_f64();
-                println!("t = {} for get at index", x);
+              
     
     
     
-    
-                // TESTING NUM ELEMENTS AT:
-                // println!("Testing num_elem_at");
-                let start = Instant::now();
-                // For num_operations time
-                for _ in 0..num_operations {
-                    let index = rng.gen_range(0..size-1);
-                    // Get the at index index
-                    sparse_array.num_elem_at(index);
+                if TEST_NUM_ELEMENTS_AT {
+                    // TESTING NUM ELEMENTS AT:
+                    // println!("Testing num_elem_at");
+                    let start = Instant::now();
+                    // For num_operations time
+                    for _ in 0..num_operations {
+                        let index = rng.gen_range(0..size-1);
+                        // Get the at index index
+                        sparse_array.num_elem_at(index);
+                    }
+                    let duration = start.elapsed();
+                    // return the duration as a float in seconds
+                    let x = duration.as_secs_f64();
+                    println!("t = {} for num_elem_at", x);
                 }
-                let duration = start.elapsed();
-                // return the duration as a float in seconds
-                let x = duration.as_secs_f64();
-                println!("t = {} for num_elem_at", x);
+               
     
     
-    
-                // TESTING GET AT RANK
-                // println!("Testing get_at_rank");
-                let start = Instant::now();
-                // For num_operations time
-                for _ in 0..num_operations {
-                    let index = rng.gen_range(0..num_elts-1);
-                    // Get the at index index
-                    sparse_array.get_at_rank(index, &mut s);
+                if TEST_GET_AT_RANK {
+                    // TESTING GET AT RANK
+                    // println!("Testing get_at_rank");
+                    let start = Instant::now();
+                    // For num_operations time
+                    for _ in 0..num_operations {
+                        let index = rng.gen_range(0..num_elts-1);
+                        // Get the at index index
+                        sparse_array.get_at_rank(index, &mut s);
+                    }
+                    let duration = start.elapsed();
+                    // return the duration as a float in seconds
+                    let x = duration.as_secs_f64();
+                    println!("t = {} for get_at_rank", x);
                 }
-                let duration = start.elapsed();
-                // return the duration as a float in seconds
-                let x = duration.as_secs_f64();
-                println!("t = {} for get_at_rank", x);
+               
     
     
     
-                //
-                // TESTING get_index_of
-                let start = Instant::now();
-                // For num_operations time
-                for _ in 0..num_operations {
-                    let index = rng.gen_range(0..num_elts-1);
-                    // Get the at index index
-                    sparse_array.get_index_of(index);
+                if TEST_GET_INDEX_OF {
+                    // TESTING get_index_of
+                    let start = Instant::now();
+                    // For num_operations time
+                    for _ in 0..num_operations {
+                        let index = rng.gen_range(0..num_elts-1);
+                        // Get the at index index
+                        sparse_array.get_index_of(index);
+                    }
+                    let duration = start.elapsed();
+                    // return the duration as a float in seconds
+                    let x = duration.as_secs_f64();
+                    println!("t = {} for get_index_of", x);
                 }
-                let duration = start.elapsed();
-                // return the duration as a float in seconds
-                let x = duration.as_secs_f64();
-                println!("t = {} for get_index_of", x);
+                
     
             } else {
 
                 // Testing size of structure
+                println!("Sparsity is: {} and size is {}", sparsity, size);
                 let mut sparse_array = make_sparse_array(size, sparsity);
                 sparse_array.finalize();
                 let num_elts = sparse_array.num_elem();
                 let total_size = sparse_array.get_overhead();
                 println!("Regular: bit_vector bits={}, num_elts={}, size_in_bytes={}", size, num_elts, total_size);
 
-                // let mut sparse_array = make_sparse_array3(size, sparsity);
-                // sparse_array.finalize();
-                // let num_elts = sparse_array.num_elem();
-                // let total_size2 = sparse_array.get_overhead();
-                // println!("Empty String: bit_vector bits={}, num_elts={}, size_in_bytes={}", size, num_elts, total_size2);
+                let mut sparse_array = make_sparse_array3(size, sparsity);
+                sparse_array.finalize();
+                let num_elts = sparse_array.num_elem();
+                let total_size2 = sparse_array.get_overhead();
+                println!("Empty String: bit_vector bits={}, num_elts={}, size_in_bytes={}", size, num_elts, total_size2);
                 
                 // let proportion = total_size2 as f64 / total_size as f64 ;
                 // println!("proportion is {}", proportion);
-                let test_vec = make_sparse_vector(size, sparsity);
-                let size_vec = test_vec.iter().map(|s| s.len()).sum::<usize>();
-                println!("test_vec size = {}", size_vec);
-                let proportion = size_vec as f64 / total_size as f64 ;
-                println!("proportion is {}", proportion);
+                // let test_vec = make_sparse_vector(size, sparsity);
+                // let size_vec = test_vec.iter().map(|s| s.len()).sum::<usize>();
+                // println!("test_vec size = {}", size_vec);
+                // let proportion = size_vec as f64 / total_size as f64 ;
+                // println!("proportion is {}", proportion);
             }
           
 
@@ -354,10 +489,10 @@ fn run_sparse_array_experiments(){
 fn main() {
     env::set_var("RUST_BACKTRACE", "1");
     // test_rank_support();
-    // test_select_support();
-    test_validity_sparse_array();
-    test_speed_of_funcs_wrt_size();
-
+    // test_select_support_full();
+    // test_validity_sparse_array();
+    // test_speed_of_funcs_wrt_size();
+    check_bit_vector();
 
 
 }

@@ -3,8 +3,7 @@ use crate::utils::my_log;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::cmp;
-use std::rc::Rc;
-use std::cell::RefCell;
+
 
 pub struct RankSupport<'a> {
     bit_vector: &'a BitVector,
