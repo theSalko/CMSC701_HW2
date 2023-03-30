@@ -13,9 +13,9 @@ impl<'a> SelectSupport<'a> {
         }
     }
 
-    // Update the select1 method to use the precomputed
-    // select table for lookups. This will have constant time 
-    // complexity for most cases, depending on the hashmap implementation.
+    
+
+    // Gives position, in the underlying bit-vector, of the FIRST index, j for which rank1(j) = i.
     pub fn select1(&self, i: u64) -> u64 {
         // Base case we don't want to deal with
         if i==0 {

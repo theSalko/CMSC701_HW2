@@ -3,8 +3,8 @@ use std::io::{Read, Write};
 use std::fs::File;
 
 pub struct BitVector {
-    data: Vec<u64>,
-    size: usize,
+    pub data: Vec<u64>,
+    pub size: usize,
 }
 
 impl BitVector {
@@ -51,7 +51,7 @@ impl BitVector {
         }
     }
 
-
+    // Gets the value at index
     pub fn get(&self, index: usize) -> bool { 
         // Check that the index is within the bounds
         assert!(index < self.size, "Index out of bounds");
@@ -75,6 +75,7 @@ impl BitVector {
     }
 
 
+    // Saves the bit vector to a file with filename
     pub fn save(&self, file_name: &str) -> std::io::Result<()> { 
         // Create the file
         let mut file = File::create(file_name)?;
@@ -87,6 +88,8 @@ impl BitVector {
         Ok(())
     }
 
+
+    // Loads the bit vector from a file with file name
     pub fn load(file_name: &str) -> std::io::Result<Self> {
 
 
@@ -126,6 +129,7 @@ impl BitVector {
         println!();
     }
 
+    // Gets the i-th rank
     pub fn get_i_th_rank(&self, number:u64, i:usize) -> u64 {
         if i==0 {
             return 0;
@@ -143,6 +147,7 @@ impl BitVector {
         return num_ones_before_i.into();
     }
 
+    // Get's the first x bits
     pub fn get_first_x_bits(&self, number: u64, x: usize) -> u64 {
         let mask = (1u64 << x) - 1;
         number & mask
@@ -208,6 +213,18 @@ impl BitVector {
         }
 
         return result;
+    }
+
+    
+    pub fn memory_usage(&self) -> usize {
+        // Calculate memory usage of the data Vec<u64>
+        let data_memory = std::mem::size_of::<u64>() * self.data.len();
+
+        // Calculate memory usage of the size usize
+        let size_memory = std::mem::size_of::<usize>();
+
+        // Return total memory usage
+        data_memory + size_memory
     }
 
 
